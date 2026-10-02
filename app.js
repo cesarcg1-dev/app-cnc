@@ -1,0 +1,411 @@
+// ===== DATOS =====
+let empresas = JSON.parse(localStorage.getItem("empresas")) || [];
+let equipos = JSON.parse(localStorage.getItem("equipos")) || [];
+let tickets = JSON.parse(localStorage.getItem("tickets")) || [];
+let servicios = JSON.parse(localStorage.getItem("servicios")) || [];
+let idEnEdicion = null;
+
+
+// ===== ELEMENTOS DE LA PÁGINA =====
+const formEmpresa = document.getElementById("form-empresa");
+const campoNombreEmpresa = document.getElementById("nombre-empresa");
+const listaEmpresas = document.getElementById("lista-empresas");
+
+const formEquipo = document.getElementById("form-equipo");
+const selectEmpresa = document.getElementById("empresa-equipo");
+const campoId = document.getElementById("id-equipo");
+const campoNombre = document.getElementById("nombre-equipo");
+const campoMarca = document.getElementById("marca-equipo");
+const botonGuardar = formEquipo.querySelector("button");
+const listaEquipos = document.getElementById("lista-equipos");
+
+const formTicket = document.getElementById("form-ticket");
+const selectEquipo = document.getElementById("equipo-ticket");
+const campoDescripcion = document.getElementById("descripcion-ticket");
+const listaTickets = document.getElementById("lista-tickets");
+
+const formServicio = document.getElementById("form-servicio");
+const selectEquipoServicio = document.getElementById("equipo-servicio");
+const campoFecha = document.getElementById("fecha-servicio");
+const campoDescripcionServicio = document.getElementById("descripcion-servicio");
+const filtroServicios = document.getElementById("filtro-servicios");
+const listaServicios = document.getElementById("lista-servicios");
+
+// ===== FUNCIONES GENERALES =====
+function guardar() {
+  localStorage.setItem("empresas", JSON.stringify(empresas));
+  localStorage.setItem("equipos", JSON.stringify(equipos));
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+  localStorage.setItem("servicios", JSON.stringify(servicios));
+}
+
+// Dado el id de una empresa, devuelve su nombre
+function nombreDeEmpresa(empresaId) {
+  const empresa = empresas.find(function (e) {
+    return e.id === empresaId;
+  });
+  return empresa ? empresa.nombre : "Sin empresa";
+}
+
+// ===== EMPRESAS =====
+function llenarSelect() {
+  const seleccionada = selectEmpresa.value; // para no perder la elección
+  selectEmpresa.innerHTML = "";
+
+  const opcionVacia = document.createElement("option");
+  opcionVacia.value = "";
+  opcionVacia.textContent = "-- Elige una empresa --";
+  selectEmpresa.appendChild(opcionVacia);
+
+  for (const empresa of empresas) {
+    const opcion = document.createElement("option");
+    opcion.value = empresa.id;
+    opcion.textContent = empresa.nombre;
+    selectEmpresa.appendChild(opcion);
+  }
+  selectEmpresa.value = seleccionada;
+}
+
+function mostrarEmpresas() {
+  listaEmpresas.innerHTML = "";
+  for (const empresa of empresas) {
+    const li = document.createElement("li");
+    li.textContent = empresa.nombre;
+
+    const btnBorrar = document.createElement("button");
+    btnBorrar.textContent = "Borrar";
+    btnBorrar.addEventListener("click", function () {
+      borrarEmpresa(empresa.id);
+    });
+
+    li.appendChild(btnBorrar);
+    listaEmpresas.appendChild(li);
+  }
+  llenarSelect();
+}
+
+function borrarEmpresa(id) {
+  const tieneEquipos = equipos.some(function (e) {
+    return e.empresaId === id;
+  });
+  if (tieneEquipos) {
+    alert("No se puede borrar: la empresa tiene equipos registrados.");
+    return;
+  }
+  if (!confirm("¿Borrar la empresa " + nombreDeEmpresa(id) + "?")) return;
+  empresas = empresas.filter(function (e) {
+    return e.id !== id;
+  });
+  guardar();
+  mostrarEmpresas();
+}
+
+formEmpresa.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+  const nombre = campoNombreEmpresa.value.trim();
+
+  const yaExiste = empresas.some(function (e) {
+    return e.nombre.toLowerCase() === nombre.toLowerCase();
+  });
+  if (yaExiste) {
+    alert("Ya existe una empresa con ese nombre.");
+    return;
+  }
+
+  empresas.push({ id: Date.now().toString(), nombre: nombre });
+  guardar();
+  mostrarEmpresas();
+  formEmpresa.reset();
+});
+
+// ===== EQUIPOS =====
+function mostrarEquipos() {
+  listaEquipos.innerHTML = "";
+  for (const equipo of equipos) {
+    const li = document.createElement("li");
+    li.textContent =
+      equipo.id + " - " + equipo.nombre + " (" + equipo.marca + ") · " +
+      nombreDeEmpresa(equipo.empresaId);
+
+    const btnEditar = document.createElement("button");
+    btnEditar.textContent = "Editar";
+    btnEditar.addEventListener("click", function () {
+      editarEquipo(equipo.id);
+    });
+
+  llenarSelectEquipos();
+  llenarSelectsServicios();
+
+    const btnBorrar = document.createElement("button");
+    btnBorrar.textContent = "Borrar";
+    btnBorrar.addEventListener("click", function () {
+      borrarEquipo(equipo.id);
+    });
+
+    li.appendChild(btnEditar);
+    li.appendChild(btnBorrar);
+    listaEquipos.appendChild(li);
+  }
+}
+
+function editarEquipo(id) {
+  const equipo = equipos.find(function (e) {
+    return e.id === id;
+  });
+  selectEmpresa.value = equipo.empresaId || "";
+  campoId.value = equipo.id;
+  campoNombre.value = equipo.nombre;
+  campoMarca.value = equipo.marca;
+  campoId.disabled = true;
+  botonGuardar.textContent = "Guardar cambios";
+  idEnEdicion = id;
+}
+
+function borrarEquipo(id) {
+ /*   const tieneTickets = tickets.some(function (t) {
+    return t.equipoId === id;
+  });
+  if (tieneTickets) {
+    alert("No se puede borrar: el equipo tiene tickets registrados.");
+    return;
+  }
+*/
+  const tieneRegistros =
+    tickets.some(function (t) {
+      return t.equipoId === id;
+    }) ||
+    servicios.some(function (s) {
+      return s.equipoId === id;
+    });
+  if (tieneRegistros) {
+    alert("No se puede borrar: el equipo tiene tickets o servicios registrados.");
+    return;
+  }
+
+
+
+  if (!confirm("¿Borrar el equipo " + id + "?")) return;
+  equipos = equipos.filter(function (e) {
+    return e.id !== id;
+  });
+  guardar();
+  mostrarEquipos();
+}
+
+formEquipo.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  const empresaId = selectEmpresa.value;
+  const id = campoId.value.trim().toUpperCase();
+  const nombre = campoNombre.value.trim();
+  const marca = campoMarca.value.trim();
+
+  if (idEnEdicion === null) {
+    const yaExiste = equipos.some(function (e) {
+      return e.id === id;
+    });
+    if (yaExiste) {
+      alert("Ya existe un equipo con el identificador " + id);
+      return;
+    }
+    equipos.push({ id: id, nombre: nombre, marca: marca, empresaId: empresaId });
+  } else {
+    const equipo = equipos.find(function (e) {
+      return e.id === idEnEdicion;
+    });
+    equipo.nombre = nombre;
+    equipo.marca = marca;
+    equipo.empresaId = empresaId;
+  }
+
+  guardar();
+  mostrarEquipos();
+
+  formEquipo.reset();
+  campoId.disabled = false;
+  botonGuardar.textContent = "Agregar equipo";
+  idEnEdicion = null;
+});
+
+// ===== TICKETS =====
+const ESTADOS = ["Abierto", "En proceso", "Cerrado"];
+
+function llenarSelectEquipos() {
+  const seleccionado = selectEquipo.value;
+  selectEquipo.innerHTML = "";
+
+  const opcionVacia = document.createElement("option");
+  opcionVacia.value = "";
+  opcionVacia.textContent = "-- Elige un equipo --";
+  selectEquipo.appendChild(opcionVacia);
+
+  for (const equipo of equipos) {
+    const opcion = document.createElement("option");
+    opcion.value = equipo.id;
+    opcion.textContent =
+      equipo.id + " - " + equipo.nombre + " (" + nombreDeEmpresa(equipo.empresaId) + ")";
+    selectEquipo.appendChild(opcion);
+  }
+  selectEquipo.value = seleccionado;
+}
+
+function mostrarTickets() {
+  listaTickets.innerHTML = "";
+  for (const ticket of tickets) {
+    const li = document.createElement("li");
+    li.textContent =
+      new Date(ticket.fecha).toLocaleDateString("es-MX") + " · " +
+      ticket.equipoId + " · " + ticket.descripcion + " · ";
+
+    // Menú para cambiar el estado del ticket
+    const selectEstado = document.createElement("select");
+    for (const estado of ESTADOS) {
+      const opcion = document.createElement("option");
+      opcion.value = estado;
+      opcion.textContent = estado;
+      if (estado === ticket.estado) opcion.selected = true;
+      selectEstado.appendChild(opcion);
+    }
+    selectEstado.addEventListener("change", function () {
+      ticket.estado = selectEstado.value;
+      guardar();
+    });
+
+    const btnBorrar = document.createElement("button");
+    btnBorrar.textContent = "Borrar";
+    btnBorrar.addEventListener("click", function () {
+      borrarTicket(ticket.id);
+    });
+
+    li.appendChild(selectEstado);
+    li.appendChild(btnBorrar);
+    listaTickets.appendChild(li);
+  }
+}
+
+function borrarTicket(id) {
+  if (!confirm("¿Borrar este ticket?")) return;
+  tickets = tickets.filter(function (t) {
+    return t.id !== id;
+  });
+  guardar();
+  mostrarTickets();
+}
+
+formTicket.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  tickets.unshift({
+    id: Date.now().toString(),
+    equipoId: selectEquipo.value,
+    descripcion: campoDescripcion.value.trim(),
+    estado: "Abierto",
+    fecha: new Date().toISOString()
+  });
+
+  guardar();
+  mostrarTickets();
+  formTicket.reset();
+});
+
+
+// ===== SERVICIOS =====
+
+// Llena cualquier <select> con la lista de equipos
+function llenarSelectDeEquipos(select, textoVacio) {
+  const seleccionado = select.value;
+  select.innerHTML = "";
+
+  const opcionVacia = document.createElement("option");
+  opcionVacia.value = "";
+  opcionVacia.textContent = textoVacio;
+  select.appendChild(opcionVacia);
+
+  for (const equipo of equipos) {
+    const opcion = document.createElement("option");
+    opcion.value = equipo.id;
+    opcion.textContent =
+      equipo.id + " - " + equipo.nombre + " (" + nombreDeEmpresa(equipo.empresaId) + ")";
+    select.appendChild(opcion);
+  }
+  select.value = seleccionado;
+}
+
+function llenarSelectsServicios() {
+  llenarSelectDeEquipos(selectEquipoServicio, "-- Elige un equipo --");
+  llenarSelectDeEquipos(filtroServicios, "Todos los equipos");
+}
+
+// Fecha de hoy en formato AAAA-MM-DD (el que usa <input type="date">)
+function fechaDeHoy() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+// Convierte "2026-10-02" en "02/10/2026"
+function fechaLegible(fecha) {
+  const partes = fecha.split("-");
+  return partes[2] + "/" + partes[1] + "/" + partes[0];
+}
+
+function mostrarServicios() {
+  listaServicios.innerHTML = "";
+
+  // Aplicar el filtro (valor vacío = todos los equipos)
+  const equipoFiltrado = filtroServicios.value;
+  const visibles = servicios.filter(function (s) {
+    return equipoFiltrado === "" || s.equipoId === equipoFiltrado;
+  });
+
+  // Del más reciente al más antiguo
+  visibles.sort(function (a, b) {
+    return b.fecha.localeCompare(a.fecha);
+  });
+
+  for (const servicio of visibles) {
+    const li = document.createElement("li");
+    li.textContent =
+      fechaLegible(servicio.fecha) + " · " + servicio.equipoId + " · " + servicio.descripcion;
+
+    const btnBorrar = document.createElement("button");
+    btnBorrar.textContent = "Borrar";
+    btnBorrar.addEventListener("click", function () {
+      borrarServicio(servicio.id);
+    });
+
+    li.appendChild(btnBorrar);
+    listaServicios.appendChild(li);
+  }
+}
+
+function borrarServicio(id) {
+  if (!confirm("¿Borrar este servicio?")) return;
+  servicios = servicios.filter(function (s) {
+    return s.id !== id;
+  });
+  guardar();
+  mostrarServicios();
+}
+
+formServicio.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  servicios.unshift({
+    id: Date.now().toString(),
+    equipoId: selectEquipoServicio.value,
+    fecha: campoFecha.value,
+    descripcion: campoDescripcionServicio.value.trim()
+  });
+
+  guardar();
+  mostrarServicios();
+  formServicio.reset();
+  campoFecha.value = fechaDeHoy();
+});
+
+// Al cambiar el filtro, volvemos a dibujar la lista
+filtroServicios.addEventListener("change", mostrarServicios);
+
+// ===== AL ABRIR LA PÁGINA =====
+mostrarEmpresas();
+mostrarEquipos();
+mostrarTickets();

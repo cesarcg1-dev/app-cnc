@@ -1,0 +1,42 @@
+body {
+  font-family: Arial, sans-serif;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/*input, button {
+  padding: 10px;
+  font-size: 16px;
+}*/
+
+input, select, button {
+  padding: 10px;
+  font-size: 16px;
+}
+
+li {
+  padding: 8px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+input, select, textarea, button {
+  padding: 10px;
+  font-size: 16px;
+}
+
+textarea {
+  min-height: 70px;
+  font-family: inherit;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+}
