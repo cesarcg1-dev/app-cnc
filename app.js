@@ -11,9 +11,11 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Empresas y equipos viven en Supabase; aquí guardamos una copia para dibujar
 let empresas = [];
 let equipos = [];
-// Tickets y servicios siguen en localStorage (los pasamos en el 8c)
-let tickets = JSON.parse(localStorage.getItem("tickets")) || [];
-let servicios = JSON.parse(localStorage.getItem("servicios")) || [];
+let tickets = [];
+let servicios = [];
+
+/*let tickets = JSON.parse(localStorage.getItem("tickets")) || [];
+let servicios = JSON.parse(localStorage.getItem("servicios")) || [];*/
 let idEnEdicion = null;
 
 
@@ -44,11 +46,6 @@ const filtroServicios = document.getElementById("filtro-servicios");
 const listaServicios = document.getElementById("lista-servicios");
 
 // ===== FUNCIONES GENERALES =====
-// Por ahora solo tickets y servicios se guardan en el navegador
-function guardar() {
-  localStorage.setItem("tickets", JSON.stringify(tickets));
-  localStorage.setItem("servicios", JSON.stringify(servicios));
-}
 
 // Dado el id de una empresa, devuelve su nombre
 function nombreDeEmpresa(empresaId) {
@@ -260,9 +257,27 @@ formEquipo.addEventListener("submit", async function (evento) {
 });
 
 
-
 // ===== TICKETS =====
 const ESTADOS = ["Abierto", "En proceso", "Cerrado"];
+
+async function cargarTickets() {
+  const { data, error } = await db
+    .from("tickets")
+    .select("*")
+    .order("fecha", { ascending: false });
+  if (hayError(error)) return;
+
+  tickets = data.map(function (fila) {
+    return {
+      id: fila.id,
+      equipoId: fila.equipo_id,
+      descripcion: fila.descripcion,
+      estado: fila.estado,
+      fecha: fila.fecha
+    };
+  });
+  mostrarTickets();
+}
 
 function llenarSelectEquipos() {
   const seleccionado = selectEquipo.value;
@@ -300,9 +315,16 @@ function mostrarTickets() {
       if (estado === ticket.estado) opcion.selected = true;
       selectEstado.appendChild(opcion);
     }
-    selectEstado.addEventListener("change", function () {
+    selectEstado.addEventListener("change", async function () {
+      const { error } = await db
+        .from("tickets")
+        .update({ estado: selectEstado.value })
+        .eq("id", ticket.id);
+      if (hayError(error)) {
+        await cargarTickets(); // volver a mostrar el estado real
+        return;
+      }
       ticket.estado = selectEstado.value;
-      guardar();
     });
 
     const btnBorrar = document.createElement("button");
@@ -317,33 +339,45 @@ function mostrarTickets() {
   }
 }
 
-function borrarTicket(id) {
+async function borrarTicket(id) {
   if (!confirm("¿Borrar este ticket?")) return;
-  tickets = tickets.filter(function (t) {
-    return t.id !== id;
-  });
-  guardar();
-  mostrarTickets();
+  const { error } = await db.from("tickets").delete().eq("id", id);
+  if (hayError(error)) return;
+  await cargarTickets();
 }
 
-formTicket.addEventListener("submit", function (evento) {
+formTicket.addEventListener("submit", async function (evento) {
   evento.preventDefault();
 
-  tickets.unshift({
-    id: Date.now().toString(),
-    equipoId: selectEquipo.value,
-    descripcion: campoDescripcion.value.trim(),
-    estado: "Abierto",
-    fecha: new Date().toISOString()
+  // El estado ("Abierto") y la fecha los pone la base de datos por defecto
+  const { error } = await db.from("tickets").insert({
+    equipo_id: selectEquipo.value,
+    descripcion: campoDescripcion.value.trim()
   });
+  if (hayError(error)) return;
 
-  guardar();
-  mostrarTickets();
   formTicket.reset();
+  await cargarTickets();
 });
 
-
 // ===== SERVICIOS =====
+async function cargarServicios() {
+  const { data, error } = await db
+    .from("servicios")
+    .select("*")
+    .order("fecha", { ascending: false });
+  if (hayError(error)) return;
+
+  servicios = data.map(function (fila) {
+    return {
+      id: fila.id,
+      equipoId: fila.equipo_id,
+      fecha: fila.fecha,
+      descripcion: fila.descripcion
+    };
+  });
+  mostrarServicios();
+}
 
 // Llena cualquier <select> con la lista de equipos
 function llenarSelectDeEquipos(select, textoVacio) {
@@ -411,33 +445,33 @@ function mostrarServicios() {
   }
 }
 
-function borrarServicio(id) {
+async function borrarServicio(id) {
   if (!confirm("¿Borrar este servicio?")) return;
-  servicios = servicios.filter(function (s) {
-    return s.id !== id;
-  });
-  guardar();
-  mostrarServicios();
+  const { error } = await db.from("servicios").delete().eq("id", id);
+  if (hayError(error)) return;
+  await cargarServicios();
 }
 
-formServicio.addEventListener("submit", function (evento) {
+formServicio.addEventListener("submit", async function (evento) {
   evento.preventDefault();
 
-  servicios.unshift({
-    id: Date.now().toString(),
-    equipoId: selectEquipoServicio.value,
+  const { error } = await db.from("servicios").insert({
+    equipo_id: selectEquipoServicio.value,
     fecha: campoFecha.value,
     descripcion: campoDescripcionServicio.value.trim()
   });
+  if (hayError(error)) return;
 
-  guardar();
-  mostrarServicios();
   formServicio.reset();
   campoFecha.value = fechaDeHoy();
+  await cargarServicios();
 });
 
 // Al cambiar el filtro, volvemos a dibujar la lista
 filtroServicios.addEventListener("change", mostrarServicios);
+
+
+
 
 // ===== NAVEGACIÓN ENTRE SECCIONES =====
 const botonesMenu = document.querySelectorAll("#menu button");
@@ -467,8 +501,8 @@ for (const boton of botonesMenu) {
 async function iniciar() {
   await cargarEmpresas(); // primero las empresas: los equipos necesitan sus nombres
   await cargarEquipos();
-  mostrarTickets();
-  mostrarServicios();
+  await cargarTickets();
+  await cargarServicios();
 }
 
 campoFecha.value = fechaDeHoy();
