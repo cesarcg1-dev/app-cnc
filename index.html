@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mantenimiento CNC</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <h1>Mantenimiento CNC</h1>
+
+  <h2>Empresas</h2>
+  <form id="form-empresa">
+    <input type="text" id="nombre-empresa" placeholder="Nombre de la empresa" required>
+    <button type="submit">Agregar empresa</button>
+  </form>
+  <ul id="lista-empresas"></ul>
+
+  <h2>Equipos</h2>
+  <form id="form-equipo">
+    <select id="empresa-equipo" required></select>
+    <input type="text" id="id-equipo" placeholder="Identificador (ej. CNC-001)" required>
+    <input type="text" id="nombre-equipo" placeholder="Nombre (ej. Torno Haas)" required>
+    <input type="text" id="marca-equipo" placeholder="Marca" required>
+    <button type="submit">Agregar equipo</button>
+  </form>
+  <ul id="lista-equipos"></ul>
+
+  <h2>Tickets</h2>
+  <form id="form-ticket">
+    <select id="equipo-ticket" required></select>
+    <textarea id="descripcion-ticket" placeholder="Describe el problema" required></textarea>
+    <button type="submit">Crear ticket</button>
+  </form>
+  <ul id="lista-tickets"></ul>
+
+  <h2>Servicios realizados</h2>
+  <form id="form-servicio">
+    <select id="equipo-servicio" required></select>
+    <input type="date" id="fecha-servicio" required>
+    <textarea id="descripcion-servicio" placeholder="Trabajo realizado" required></textarea>
+    <button type="submit">Registrar servicio</button>
+  </form>
+
+  <label for="filtro-servicios">Ver historial de:</label>
+  <select id="filtro-servicios"></select>
+  <ul id="lista-servicios"></ul>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
