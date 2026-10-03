@@ -6,12 +6,16 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
+
 // ===== DATOS =====
-let empresas = JSON.parse(localStorage.getItem("empresas")) || [];
-let equipos = JSON.parse(localStorage.getItem("equipos")) || [];
+// Empresas y equipos viven en Supabase; aquí guardamos una copia para dibujar
+let empresas = [];
+let equipos = [];
+// Tickets y servicios siguen en localStorage (los pasamos en el 8c)
 let tickets = JSON.parse(localStorage.getItem("tickets")) || [];
 let servicios = JSON.parse(localStorage.getItem("servicios")) || [];
 let idEnEdicion = null;
+
 
 
 // ===== ELEMENTOS DE LA PÁGINA =====
@@ -40,9 +44,8 @@ const filtroServicios = document.getElementById("filtro-servicios");
 const listaServicios = document.getElementById("lista-servicios");
 
 // ===== FUNCIONES GENERALES =====
+// Por ahora solo tickets y servicios se guardan en el navegador
 function guardar() {
-  localStorage.setItem("empresas", JSON.stringify(empresas));
-  localStorage.setItem("equipos", JSON.stringify(equipos));
   localStorage.setItem("tickets", JSON.stringify(tickets));
   localStorage.setItem("servicios", JSON.stringify(servicios));
 }
@@ -55,9 +58,26 @@ function nombreDeEmpresa(empresaId) {
   return empresa ? empresa.nombre : "Sin empresa";
 }
 
+// Si Supabase devolvió un error, lo muestra y devuelve true
+function hayError(error) {
+  if (error) {
+    console.error(error);
+    alert("Error con la base de datos: " + error.message);
+    return true;
+  }
+  return false;
+}
+
 // ===== EMPRESAS =====
+async function cargarEmpresas() {
+  const { data, error } = await db.from("empresas").select("*").order("nombre");
+  if (hayError(error)) return;
+  empresas = data;
+  mostrarEmpresas();
+}
+
 function llenarSelect() {
-  const seleccionada = selectEmpresa.value; // para no perder la elección
+  const seleccionada = selectEmpresa.value;
   selectEmpresa.innerHTML = "";
 
   const opcionVacia = document.createElement("option");
@@ -92,7 +112,7 @@ function mostrarEmpresas() {
   llenarSelect();
 }
 
-function borrarEmpresa(id) {
+async function borrarEmpresa(id) {
   const tieneEquipos = equipos.some(function (e) {
     return e.empresaId === id;
   });
@@ -101,14 +121,13 @@ function borrarEmpresa(id) {
     return;
   }
   if (!confirm("¿Borrar la empresa " + nombreDeEmpresa(id) + "?")) return;
-  empresas = empresas.filter(function (e) {
-    return e.id !== id;
-  });
-  guardar();
-  mostrarEmpresas();
+
+  const { error } = await db.from("empresas").delete().eq("id", id);
+  if (hayError(error)) return;
+  await cargarEmpresas();
 }
 
-formEmpresa.addEventListener("submit", function (evento) {
+formEmpresa.addEventListener("submit", async function (evento) {
   evento.preventDefault();
   const nombre = campoNombreEmpresa.value.trim();
 
@@ -120,13 +139,31 @@ formEmpresa.addEventListener("submit", function (evento) {
     return;
   }
 
-  empresas.push({ id: Date.now().toString(), nombre: nombre });
-  guardar();
-  mostrarEmpresas();
+  // La base de datos genera sola el id y la fecha de creación
+  const { error } = await db.from("empresas").insert({ nombre: nombre });
+  if (hayError(error)) return;
+
   formEmpresa.reset();
+  await cargarEmpresas();
 });
 
 // ===== EQUIPOS =====
+async function cargarEquipos() {
+  const { data, error } = await db.from("equipos").select("*").order("id");
+  if (hayError(error)) return;
+
+  // En la base la columna se llama empresa_id; en el código usamos empresaId
+  equipos = data.map(function (fila) {
+    return {
+      id: fila.id,
+      nombre: fila.nombre,
+      marca: fila.marca,
+      empresaId: fila.empresa_id
+    };
+  });
+  mostrarEquipos();
+}
+
 function mostrarEquipos() {
   listaEquipos.innerHTML = "";
   for (const equipo of equipos) {
@@ -141,9 +178,6 @@ function mostrarEquipos() {
       editarEquipo(equipo.id);
     });
 
-  llenarSelectEquipos();
-  llenarSelectsServicios();
-
     const btnBorrar = document.createElement("button");
     btnBorrar.textContent = "Borrar";
     btnBorrar.addEventListener("click", function () {
@@ -154,6 +188,8 @@ function mostrarEquipos() {
     li.appendChild(btnBorrar);
     listaEquipos.appendChild(li);
   }
+  llenarSelectEquipos();
+  llenarSelectsServicios();
 }
 
 function editarEquipo(id) {
@@ -169,7 +205,7 @@ function editarEquipo(id) {
   idEnEdicion = id;
 }
 
-function borrarEquipo(id) {
+async function borrarEquipo(id) {
   const tieneRegistros =
     tickets.some(function (t) {
       return t.equipoId === id;
@@ -181,18 +217,14 @@ function borrarEquipo(id) {
     alert("No se puede borrar: el equipo tiene tickets o servicios registrados.");
     return;
   }
-
-
-
   if (!confirm("¿Borrar el equipo " + id + "?")) return;
-  equipos = equipos.filter(function (e) {
-    return e.id !== id;
-  });
-  guardar();
-  mostrarEquipos();
+
+  const { error } = await db.from("equipos").delete().eq("id", id);
+  if (hayError(error)) return;
+  await cargarEquipos();
 }
 
-formEquipo.addEventListener("submit", function (evento) {
+formEquipo.addEventListener("submit", async function (evento) {
   evento.preventDefault();
 
   const empresaId = selectEmpresa.value;
@@ -208,24 +240,26 @@ formEquipo.addEventListener("submit", function (evento) {
       alert("Ya existe un equipo con el identificador " + id);
       return;
     }
-    equipos.push({ id: id, nombre: nombre, marca: marca, empresaId: empresaId });
+    const { error } = await db
+      .from("equipos")
+      .insert({ id: id, nombre: nombre, marca: marca, empresa_id: empresaId });
+    if (hayError(error)) return;
   } else {
-    const equipo = equipos.find(function (e) {
-      return e.id === idEnEdicion;
-    });
-    equipo.nombre = nombre;
-    equipo.marca = marca;
-    equipo.empresaId = empresaId;
+    const { error } = await db
+      .from("equipos")
+      .update({ nombre: nombre, marca: marca, empresa_id: empresaId })
+      .eq("id", idEnEdicion);
+    if (hayError(error)) return;
   }
-
-  guardar();
-  mostrarEquipos();
 
   formEquipo.reset();
   campoId.disabled = false;
   botonGuardar.textContent = "Agregar equipo";
   idEnEdicion = null;
+  await cargarEquipos();
 });
+
+
 
 // ===== TICKETS =====
 const ESTADOS = ["Abierto", "En proceso", "Cerrado"];
@@ -428,18 +462,15 @@ for (const boton of botonesMenu) {
   });
 }
 
-// ===== AL ABRIR LA PÁGINA =====
-mostrarEmpresas();
-mostrarEquipos();
-mostrarTickets();
-campoFecha.value = fechaDeHoy();
-mostrarServicios();
-mostrarSeccion(localStorage.getItem("seccionActiva") || "empresas");
 
-// PRUEBA TEMPORAL: borrar después
-async function probarConexion() {
-  const { data, error } = await db.from("empresas").select("*");
-  console.log("Datos:", data);
-  console.log("Error:", error);
+// ===== AL ABRIR LA PÁGINA =====
+async function iniciar() {
+  await cargarEmpresas(); // primero las empresas: los equipos necesitan sus nombres
+  await cargarEquipos();
+  mostrarTickets();
+  mostrarServicios();
 }
-probarConexion();
+
+campoFecha.value = fechaDeHoy();
+mostrarSeccion(localStorage.getItem("seccionActiva") || "empresas");
+iniciar();
