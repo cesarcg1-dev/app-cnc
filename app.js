@@ -1,6 +1,6 @@
 // ===== CONEXIÓN A SUPABASE =====          <- AQUÍ, en la línea 1
 const SUPABASE_URL = "https://wrjunmbcuqzpavldlpao.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyanVubWJjdXF6cGF2bGRscGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NjEyMDgsImV4cCI6MjEwNjUzNzIwOH0.LGKCKjan26Bmfw1UA3lLUSRVa9lrOC0fZydFOAPygbc";
+const SUPABASE_KEY = "eyJhbGci... (tu llave completa)";
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -405,6 +405,28 @@ formServicio.addEventListener("submit", function (evento) {
 // Al cambiar el filtro, volvemos a dibujar la lista
 filtroServicios.addEventListener("change", mostrarServicios);
 
+// ===== NAVEGACIÓN ENTRE SECCIONES =====
+const botonesMenu = document.querySelectorAll("#menu button");
+const secciones = document.querySelectorAll(".seccion");
+
+function mostrarSeccion(nombre) {
+  // Mostrar solo la sección elegida
+  for (const seccion of secciones) {
+    seccion.hidden = seccion.id !== "seccion-" + nombre;
+  }
+  // Marcar el botón activo
+  for (const boton of botonesMenu) {
+    boton.classList.toggle("activo", boton.dataset.seccion === nombre);
+  }
+  // Recordar la pestaña para la próxima vez
+  localStorage.setItem("seccionActiva", nombre);
+}
+
+for (const boton of botonesMenu) {
+  boton.addEventListener("click", function () {
+    mostrarSeccion(boton.dataset.seccion);
+  });
+}
 
 // ===== AL ABRIR LA PÁGINA =====
 mostrarEmpresas();
