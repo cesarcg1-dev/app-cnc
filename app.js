@@ -1,6 +1,6 @@
 // ===== CONEXIÓN A SUPABASE =====          <- AQUÍ, en la línea 1
 const SUPABASE_URL = "https://wrjunmbcuqzpavldlpao.supabase.co";
-const SUPABASE_KEY = "eyJhbGci... (tu llave completa)";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyanVubWJjdXF6cGF2bGRscGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NjEyMDgsImV4cCI6MjEwNjUzNzIwOH0.LGKCKjan26Bmfw1UA3lLUSRVa9lrOC0fZydFOAPygbc";
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
