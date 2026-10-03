@@ -1,3 +1,11 @@
+// ===== CONEXIÓN A SUPABASE =====          <- AQUÍ, en la línea 1
+const SUPABASE_URL = "https://wrjunmbcuqzpavldlpao.supabase.co";
+const SUPABASE_KEY = "eyJhbGci... (tu llave completa)";
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
 // ===== DATOS =====
 let empresas = JSON.parse(localStorage.getItem("empresas")) || [];
 let equipos = JSON.parse(localStorage.getItem("equipos")) || [];
@@ -162,14 +170,6 @@ function editarEquipo(id) {
 }
 
 function borrarEquipo(id) {
- /*   const tieneTickets = tickets.some(function (t) {
-    return t.equipoId === id;
-  });
-  if (tieneTickets) {
-    alert("No se puede borrar: el equipo tiene tickets registrados.");
-    return;
-  }
-*/
   const tieneRegistros =
     tickets.some(function (t) {
       return t.equipoId === id;
@@ -405,7 +405,19 @@ formServicio.addEventListener("submit", function (evento) {
 // Al cambiar el filtro, volvemos a dibujar la lista
 filtroServicios.addEventListener("change", mostrarServicios);
 
+
 // ===== AL ABRIR LA PÁGINA =====
 mostrarEmpresas();
 mostrarEquipos();
 mostrarTickets();
+campoFecha.value = fechaDeHoy();
+mostrarServicios();
+mostrarSeccion(localStorage.getItem("seccionActiva") || "empresas");
+
+// PRUEBA TEMPORAL: borrar después
+async function probarConexion() {
+  const { data, error } = await db.from("empresas").select("*");
+  console.log("Datos:", data);
+  console.log("Error:", error);
+}
+probarConexion();
